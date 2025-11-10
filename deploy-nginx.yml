@@ -1,0 +1,72 @@
+- name: Локальный деплой Nginx в Docker через docker-compose
+  hosts: local # отдельно создадим файл inventori.ini (будем использовать группу local)
+  become: false
+
+  # Настройка параметров: пути и параметры порта/названия контейнера
+  vars:
+    project_dir: "/home/q10sn1k/Ansible/nginx"
+    host_html_dir: "/home/q10sn1k/Ansible/nginx/html"
+    host_http_port: "80"
+    container_name: "nginx_local"
+
+  tasks:
+    - name: Создать каталог проекта
+      ansible.bultin.file:
+        path: "{{ project_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: html
+      ansible.bultin.file:
+        path: "{{ host_html_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: index.html
+      ansible.bultin.copy:
+        dest: "{{ host_html_dir }}/index.html"
+        mode: "0644"
+        content: | 
+            <!doctype html>
+            <html lang="ru">
+            <head>
+                <meta charset="utf-8">
+                <title>Привет, я сервер</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <style>
+                    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif; margin: 2rem; }
+                    .wrap { max-width: 720px; margin: 0 auto; }
+                    h1 { margin-bottom: .25rem; }
+                    code { background: #f5f5f5; padding: .1rem .3rem; border-radius: 4px; }
+                </style>
+            </head>
+            <body>
+                <div class="wrap">
+                    <h1>Привет, я сервер</h1>
+                     <p>Эту страницу отдаёт контейнер <strong>Nginx</strong>, запущенный через <code>docker compose</code>.</p>
+                </div>
+            </body>
+            </html>       
+     
+    - name: Создание docker-compose.yml
+      ansible.bultin.copy:
+        dest: "{{ project_dir }}/docker-compose.yml"
+        mode: "0644"
+        content: | 
+          services:
+            nginx:
+                image: nginx:stable-alpine
+                container_name: {{ container_name }}
+                ports:
+                    - "{{ host_http_port }}:80"
+                volumes:
+                    - "{{ host_html_dir }}:/usr/share/nginx/html:ro"
+                restart: unless_stopped
+
+    
+    - name: Создание docker-compose.yml
+      become: true
+      ansible.bultin.shell: |
+        docker compose up -d
+      args:
+        chdir: "{{ project_dir }}"
